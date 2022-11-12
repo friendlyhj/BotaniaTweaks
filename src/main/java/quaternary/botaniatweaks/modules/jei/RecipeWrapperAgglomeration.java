@@ -4,10 +4,13 @@ import com.google.common.collect.ImmutableList;
 import mezz.jei.api.ingredients.IIngredients;
 import mezz.jei.api.ingredients.VanillaTypes;
 import mezz.jei.api.recipe.IRecipeWrapper;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.oredict.OreDictionary;
+import org.apache.commons.lang3.tuple.Pair;
 import quaternary.botaniatweaks.modules.botania.recipe.AgglomerationRecipe;
 import quaternary.botaniatweaks.modules.shared.helper.MiscHelpers;
 import vazkii.botania.client.core.handler.HUDHandler;
@@ -21,25 +24,28 @@ public class RecipeWrapperAgglomeration implements IRecipeWrapper {
 	
 	List<List<ItemStack>> inputs;
 	List<ItemStack> outputs;
+	List<FluidStack> fluidInputs;
+	List<FluidStack> fluidOutputs;
 	
-	ItemStack multiblockCenterStack;
-	ItemStack multiblockEdgeStack;
-	ItemStack multiblockCornerStack;
+	Pair<ItemStack, FluidStack> multiblockCenterStack;
+	Pair<ItemStack, FluidStack> multiblockEdgeStack;
+	Pair<ItemStack, FluidStack> multiblockCornerStack;
 	
 	//yeah i know it's stupid
 	
 	@Nullable
-	ItemStack multiblockReplaceCenterStack;
+	Pair<ItemStack, FluidStack> multiblockReplaceCenterStack;
 	@Nullable
-	ItemStack multiblockReplaceEdgeStack;
+	Pair<ItemStack, FluidStack> multiblockReplaceEdgeStack;
 	@Nullable
-	ItemStack multiblockReplaceCornerStack;
+	Pair<ItemStack, FluidStack> multiblockReplaceCornerStack;
 	
 	int manaCost;
 	
 	public RecipeWrapperAgglomeration(AgglomerationRecipe recipe) {
 		this.recipe = recipe;
 		ImmutableList.Builder<List<ItemStack>> inputs_ = ImmutableList.builder();
+		ImmutableList.Builder<FluidStack> fluidInputs_ = ImmutableList.builder();
 		
 		//Itemstack inputs
 		for(ItemStack stack : recipe.getRecipeStacks()) {
@@ -52,37 +58,39 @@ public class RecipeWrapperAgglomeration implements IRecipeWrapper {
 		}
 		
 		//The three multiblock pieces
-		multiblockCenterStack = MiscHelpers.stackFromState(recipe.multiblockCenter);
-		multiblockEdgeStack = MiscHelpers.stackFromState(recipe.multiblockEdge);
-		multiblockCornerStack = MiscHelpers.stackFromState(recipe.multiblockCorner);
-		
-		inputs_.add(ImmutableList.of(multiblockCenterStack));
-		inputs_.add(ImmutableList.of(multiblockEdgeStack));
-		inputs_.add(ImmutableList.of(multiblockCornerStack));
+		toInput(inputs_, fluidInputs_, recipe.multiblockCenter);
+		toInput(inputs_, fluidInputs_, recipe.multiblockEdge);
+		toInput(inputs_, fluidInputs_, recipe.multiblockCorner);
+		multiblockCenterStack = MiscHelpers.stackFromStateOrFluid(recipe.multiblockCenter);
+		multiblockEdgeStack = MiscHelpers.stackFromStateOrFluid(recipe.multiblockEdge);
+		multiblockCornerStack = MiscHelpers.stackFromStateOrFluid(recipe.multiblockCorner);
 		
 		ImmutableList.Builder<ItemStack> outputs_ = ImmutableList.builder();
+		ImmutableList.Builder<FluidStack> fluidOutputs_ = ImmutableList.builder();
 		
 		//Recipe output
 		outputs_.add(recipe.getRecipeOutputCopy());
 		
 		//The multiblock replacements
 		if(recipe.multiblockCenterReplace != null) {
-			multiblockReplaceCenterStack = MiscHelpers.stackFromState(recipe.multiblockCenterReplace);
-			outputs_.add(multiblockReplaceCenterStack);
+			multiblockReplaceCenterStack = MiscHelpers.stackFromStateOrFluid(recipe.multiblockCenterReplace);
 		}
 		
 		if(recipe.multiblockEdgeReplace != null) {
-			multiblockReplaceEdgeStack = MiscHelpers.stackFromState(recipe.multiblockEdgeReplace);
-			outputs_.add(multiblockReplaceEdgeStack);
+			multiblockReplaceEdgeStack = MiscHelpers.stackFromStateOrFluid(recipe.multiblockEdgeReplace);
 		}
 		
 		if(recipe.multiblockCornerReplace != null) {
-			multiblockReplaceCornerStack = MiscHelpers.stackFromState(recipe.multiblockCornerReplace);
-			outputs_.add(multiblockReplaceCornerStack);
+			multiblockReplaceCornerStack = MiscHelpers.stackFromStateOrFluid(recipe.multiblockCornerReplace);
 		}
+		toOutput(outputs_, fluidOutputs_, recipe.multiblockCenterReplace);
+		toOutput(outputs_, fluidOutputs_, recipe.multiblockEdgeReplace);
+		toOutput(outputs_, fluidOutputs_, recipe.multiblockCornerReplace);
 		
 		inputs = inputs_.build();
 		outputs = outputs_.build();
+		fluidInputs = fluidInputs_.build();
+		fluidOutputs = fluidOutputs_.build();
 		
 		manaCost = recipe.manaCost;
 	}
@@ -91,6 +99,8 @@ public class RecipeWrapperAgglomeration implements IRecipeWrapper {
 	public void getIngredients(IIngredients ing) {
 		ing.setInputLists(VanillaTypes.ITEM, inputs);
 		ing.setOutputs(VanillaTypes.ITEM, outputs);
+		ing.setInputs(VanillaTypes.FLUID, fluidInputs);
+		ing.setOutputs(VanillaTypes.FLUID, fluidOutputs);
 	}
 	
 	@Override
@@ -104,5 +114,25 @@ public class RecipeWrapperAgglomeration implements IRecipeWrapper {
 		}
 		
 		GlStateManager.disableAlpha();
+	}
+
+	private void toInput(ImmutableList.Builder<List<ItemStack>> itemBuilder, ImmutableList.Builder<FluidStack> fluidBuilder, @Nullable IBlockState block) {
+		if (block == null) return;
+		Pair<ItemStack, FluidStack> result = MiscHelpers.stackFromStateOrFluid(block);
+		if (result.getRight() != null) {
+			fluidBuilder.add(result.getRight());
+		} else {
+			itemBuilder.add(ImmutableList.of(result.getLeft()));
+		}
+	}
+
+	private void toOutput(ImmutableList.Builder<ItemStack> itemBuilder, ImmutableList.Builder<FluidStack> fluidBuilder, @Nullable IBlockState block) {
+		if (block == null) return;
+		Pair<ItemStack, FluidStack> result = MiscHelpers.stackFromStateOrFluid(block);
+		if (result.getRight() != null) {
+			fluidBuilder.add(result.getRight());
+		} else if (!result.getLeft().isEmpty()) {
+			itemBuilder.add(result.getLeft());
+		}
 	}
 }

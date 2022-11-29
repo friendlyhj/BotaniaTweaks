@@ -13,7 +13,6 @@ import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraftforge.fluids.*;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.ModContainer;
-import org.apache.commons.lang3.tuple.Pair;
 import quaternary.botaniatweaks.modules.botania.block.BlockCompressedTinyPotato;
 import vazkii.botania.common.block.decor.BlockTinyPotato;
 
@@ -51,37 +50,31 @@ public class MiscHelpers {
 		}
 	}
 	
-
-	public static ItemStack stackFromState(IBlockState state) {
-		return stackFromStateOrFluid(state).getLeft();
-	}
-
 	//This is EXTREMELY DUMB
 	//no u
-	public static Pair<ItemStack, FluidStack> stackFromStateOrFluid(IBlockState state) {
-		if(state == null) return Pair.of(ItemStack.EMPTY, null);
+	public static ItemStack stackFromState(IBlockState state) {
+		if(state == null) return ItemStack.EMPTY;
 		Block block = state.getBlock();
 		if (block instanceof IFluidBlock) {
-			IFluidBlock fluid = (IFluidBlock) block;
-			return Pair.of(ItemStack.EMPTY, new FluidStack(fluid.getFluid(), Fluid.BUCKET_VOLUME));
+			return FluidUtil.getFilledBucket(new FluidStack(((IFluidBlock) block).getFluid(), Fluid.BUCKET_VOLUME));
 		}
-		if (block == Blocks.WATER) return Pair.of(ItemStack.EMPTY, new FluidStack(FluidRegistry.WATER, Fluid.BUCKET_VOLUME));
-		if (block == Blocks.LAVA) return Pair.of(ItemStack.EMPTY, new FluidStack(FluidRegistry.LAVA, Fluid.BUCKET_VOLUME));
-
+		if (block == Blocks.WATER) return new ItemStack(Items.WATER_BUCKET);
+		if (block == Blocks.LAVA) return new ItemStack(Items.LAVA_BUCKET);
+		
 		try {
 			//this is a forge added method that takes a world, hit vector, few other things
 			//and we don't have any of those! so let's just null them all and hope for the best
 			//(usually this delegates to a vanilla method that just returns a new itemstack
 			//with item.getitemfromblock and whatever datavalue damageDropped gives)
-			return Pair.of(block.getPickBlock(state, null, null, null, null), null); //Ughhhh
+			return block.getPickBlock(state, null, null, null, null); //Ughhhh
 		} catch(Exception e) {
 			//oof
 		}
-
+		
 		//ok that didn't work, as a last-ditch effort try emulating vanilla block#getitem
 		Item item = Item.getItemFromBlock(block);
-		if(item == Items.AIR)return Pair.of(ItemStack.EMPTY, null);
-		else return Pair.of(new ItemStack(item, 1, block.getMetaFromState(state)), null);
+		if(item == Items.AIR)	return ItemStack.EMPTY;
+		else return new ItemStack(item, 1, block.getMetaFromState(state));
 	}
 	
 	public static List<ItemStack> getAllSubtypes(Iterable<ItemStack> stacks) {

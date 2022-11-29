@@ -52,7 +52,7 @@ dependencies {
 	deobfCompile "curse.maven:thaumcraft-223628:2629023"
 	
 	//It doesn't work if you pull it from cursemaven due to ridiculous AT errors lmao
-	deobfCompile "CraftTweaker2:CraftTweaker2-MC1120-Main:1.12-4.1.20.681"
+	deobfCompile "CraftTweaker2:CraftTweaker2-MC1120-Main:1.12-4.1.20.594"
 	//runtime "curse.maven:modtweaker:2881277"
 	//runtime "curse.maven:mtlib:2684561"
 	

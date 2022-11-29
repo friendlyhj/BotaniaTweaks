@@ -1,10 +1,8 @@
 package quaternary.botaniatweaks.modules.jei;
 
+import com.google.common.collect.ImmutableList;
 import mezz.jei.api.IGuiHelper;
-import mezz.jei.api.gui.IDrawable;
-import mezz.jei.api.gui.IGuiFluidStackGroup;
-import mezz.jei.api.gui.IGuiItemStackGroup;
-import mezz.jei.api.gui.IRecipeLayout;
+import mezz.jei.api.gui.*;
 import mezz.jei.api.ingredients.IIngredients;
 import mezz.jei.api.ingredients.VanillaTypes;
 import mezz.jei.api.recipe.IRecipeCategory;
@@ -12,19 +10,14 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.MathHelper;
-import net.minecraftforge.fluids.FluidStack;
-import org.apache.commons.lang3.tuple.Pair;
 import quaternary.botaniatweaks.BotaniaTweaks;
 import quaternary.botaniatweaks.modules.shared.helper.ModCompatUtil;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class RecipeCategoryCustomAgglomeration implements IRecipeCategory<RecipeWrapperAgglomeration> {
 	
 	public static final String UID = "botaniatweaks.agglomeration";
-	public static final Pair<ItemStack, FluidStack> EMPTY_STACK = Pair.of(ItemStack.EMPTY, null);
-
 	static final int WIDTH = 170;
 	static final int HEIGHT = 130;
 	
@@ -63,11 +56,10 @@ public class RecipeCategoryCustomAgglomeration implements IRecipeCategory<Recipe
 	@Override
 	public void setRecipe(IRecipeLayout layout, RecipeWrapperAgglomeration wrapper, IIngredients ings) {
 		IGuiItemStackGroup stacks = layout.getItemStacks();
-		IGuiFluidStackGroup fluidStacks = layout.getFluidStacks();
 		List<List<ItemStack>> ins = ings.getInputs(VanillaTypes.ITEM);
 		List<List<ItemStack>> itemInputs = ins.subList(0, ins.size() - 3);
 		List<List<ItemStack>> outs = ings.getOutputs(VanillaTypes.ITEM);
-		Pair<AtomicInteger, AtomicInteger> indexes = Pair.of(new AtomicInteger(), new AtomicInteger());
+		int index = 0;
 		
 		//Set centered row of inputs
 		
@@ -78,9 +70,9 @@ public class RecipeCategoryCustomAgglomeration implements IRecipeCategory<Recipe
 		int posX = WIDTH / 2 - totalInputWidth / 2;
 		int posY = 0;
 		for(List<ItemStack> in : itemInputs) {
-			stacks.init(getItemIndex(indexes), true, posX, posY);
-			stacks.set(getItemIndex(indexes), in);
-			increaseItemIndex(indexes);
+			stacks.init(index, true, posX, posY);
+			stacks.set(index, in);
+			index++;
 			posX += ITEM_WIDTH + ITEM_BUFFER;
 		}
 		
@@ -88,17 +80,17 @@ public class RecipeCategoryCustomAgglomeration implements IRecipeCategory<Recipe
 		
 		//Set output item
 		List<ItemStack> outItem = outs.get(0);
-		stacks.init(getItemIndex(indexes), false, WIDTH / 2 - ITEM_WIDTH / 2, posY);
-		stacks.set(getItemIndex(indexes), outItem);
-		increaseItemIndex(indexes);
+		stacks.init(index, false, WIDTH / 2 - ITEM_WIDTH / 2, posY);
+		stacks.set(index, outItem);
+		index++;
 		
 		posY += ITEM_HEIGHT * 4.5 - 5;
 		
 		//Set multiblock under plate
 		
-		Pair<ItemStack, FluidStack> centerReplace = wrapper.multiblockReplaceCenterStack;
-		Pair<ItemStack, FluidStack> edgeReplace = wrapper.multiblockReplaceEdgeStack;
-		Pair<ItemStack, FluidStack> cornerReplace = wrapper.multiblockReplaceCornerStack;
+		ItemStack centerReplace = wrapper.multiblockReplaceCenterStack;
+		ItemStack edgeReplace = wrapper.multiblockReplaceEdgeStack;
+		ItemStack cornerReplace = wrapper.multiblockReplaceCornerStack;
 		
 		boolean isCenterReplaced = true;
 		boolean isEdgeReplaced = true;
@@ -106,77 +98,86 @@ public class RecipeCategoryCustomAgglomeration implements IRecipeCategory<Recipe
 		
 		if(centerReplace == null) {
 			isCenterReplaced = false;
-			centerReplace = EMPTY_STACK;
+			centerReplace = ItemStack.EMPTY;
 		}
 		
 		if(edgeReplace == null) {
 			isEdgeReplaced = false;
-			edgeReplace = EMPTY_STACK;
+			edgeReplace = ItemStack.EMPTY;
 		}
 		
 		if(cornerReplace == null) {
 			isCornerReplaced = false;
-			cornerReplace = EMPTY_STACK;
+			cornerReplace = ItemStack.EMPTY;
 		}
 		
 		if(!isCenterReplaced && !isEdgeReplaced && !isCornerReplaced) {
-			setMultiblock(indexes, stacks, fluidStacks, wrapper.multiblockCenterStack, wrapper.multiblockEdgeStack, wrapper.multiblockCornerStack, WIDTH / 2, posY, false, false, false);
+			setMultiblock(index, stacks, ImmutableList.of(wrapper.multiblockCenterStack), ImmutableList.of(wrapper.multiblockEdgeStack), ImmutableList.of(wrapper.multiblockCornerStack), WIDTH / 2, posY, false, false, false);
 		} else {
-			setMultiblock(indexes, stacks, fluidStacks, wrapper.multiblockCenterStack, wrapper.multiblockEdgeStack, wrapper.multiblockCornerStack, WIDTH / 2 - ITEM_WIDTH * 3 - 1, posY, false, false, false);
+			index = setMultiblock(index, stacks, ImmutableList.of(wrapper.multiblockCenterStack), ImmutableList.of(wrapper.multiblockEdgeStack), ImmutableList.of(wrapper.multiblockCornerStack), WIDTH / 2 - ITEM_WIDTH * 3 - 1, posY, false, false, false);
 			
-			Pair<ItemStack, FluidStack> drawCenter = isCenterReplaced ? centerReplace : wrapper.multiblockCenterStack;
-			Pair<ItemStack, FluidStack> drawEdge = isEdgeReplaced ? edgeReplace : wrapper.multiblockEdgeStack;
-			Pair<ItemStack, FluidStack> drawCorner = isCornerReplaced ? cornerReplace : wrapper.multiblockCornerStack;
+			List<ItemStack> drawCenter = ImmutableList.of(isCenterReplaced ? centerReplace : wrapper.multiblockCenterStack);
+			List<ItemStack> drawEdge = ImmutableList.of(isEdgeReplaced ? edgeReplace : wrapper.multiblockEdgeStack);
+			List<ItemStack> drawCorner = ImmutableList.of(isCornerReplaced ? cornerReplace : wrapper.multiblockCornerStack);
 			
-			setMultiblock(indexes, stacks, fluidStacks, drawCenter, drawEdge, drawCorner, WIDTH / 2 + ITEM_WIDTH * 3 - 1, posY, isCenterReplaced, isEdgeReplaced, isCornerReplaced);
+			setMultiblock(index, stacks, drawCenter, drawEdge, drawCorner, WIDTH / 2 + ITEM_WIDTH * 3 - 1, posY, isCenterReplaced, isEdgeReplaced, isCornerReplaced);
 		}
-	}
-
-	static int getItemIndex(Pair<AtomicInteger, AtomicInteger> indexes) {
-		return indexes.getLeft().get();
-	}
-
-	static int getFluidIndex(Pair<AtomicInteger, AtomicInteger> indexes) {
-		return indexes.getRight().get();
-	}
-
-	static void increaseItemIndex(Pair<AtomicInteger, AtomicInteger> indexes) {
-		indexes.getLeft().incrementAndGet();
-	}
-
-	static void increaseFluidIndex(Pair<AtomicInteger, AtomicInteger> indexes) {
-		indexes.getRight().incrementAndGet();
 	}
 	
-	void setMultiblock(Pair<AtomicInteger, AtomicInteger> indexes, IGuiItemStackGroup stacks, IGuiFluidStackGroup fluidStacks, Pair<ItemStack, FluidStack> center, Pair<ItemStack, FluidStack> edges, Pair<ItemStack, FluidStack> corners, int posX, int posY, boolean centerOutput, boolean edgeOutput, boolean cornerOutput) {
-		stacks.init(getItemIndex(indexes), false, posX - ITEM_WIDTH / 2, posY - MathHelper.floor(ITEM_HEIGHT * 2.5));
-		stacks.set(getItemIndex(indexes), ModCompatUtil.getStackFor(new ResourceLocation("botania", "terraplate")));
-		increaseItemIndex(indexes);
-
-		setElement(indexes, stacks, fluidStacks, center, posX - ITEM_WIDTH / 2, posY - ITEM_HEIGHT / 2, centerOutput);
-		setElement(indexes, stacks, fluidStacks, edges, posX - MathHelper.floor(ITEM_WIDTH * 1.5), posY - ITEM_HEIGHT, edgeOutput);
-		setElement(indexes, stacks, fluidStacks, edges, posX + ITEM_WIDTH / 2, posY - ITEM_HEIGHT, edgeOutput);
-		setElement(indexes, stacks, fluidStacks, edges, posX - MathHelper.floor(ITEM_WIDTH * 1.5), posY, edgeOutput);
-		setElement(indexes, stacks, fluidStacks, edges, posX + ITEM_WIDTH / 2, posY, edgeOutput);
-		setElement(indexes, stacks, fluidStacks, corners, posX - MathHelper.floor(ITEM_WIDTH * 2.5), posY - ITEM_HEIGHT / 2, cornerOutput);
-		setElement(indexes, stacks, fluidStacks, corners, posX + MathHelper.floor(ITEM_WIDTH * 1.5), posY - ITEM_HEIGHT / 2, cornerOutput);
-		setElement(indexes, stacks, fluidStacks, corners, posX - ITEM_WIDTH / 2, posY - MathHelper.floor(ITEM_HEIGHT * 1.5), cornerOutput);
-		setElement(indexes, stacks, fluidStacks, corners, posX - ITEM_WIDTH / 2, posY + ITEM_HEIGHT / 2, cornerOutput);
+	static boolean empty(List<ItemStack> list) {
+		return list.isEmpty();
 	}
-
-	void setElement(Pair<AtomicInteger, AtomicInteger> indexes, IGuiItemStackGroup stacks, IGuiFluidStackGroup fluidStacks, Pair<ItemStack, FluidStack> element, int x, int y, boolean output) {
-		if (!element.equals(EMPTY_STACK)) {
-			FluidStack fluid = element.getRight();
-			ItemStack item = element.getLeft();
-			if (fluid != null) {
-				fluidStacks.init(getFluidIndex(indexes), output, x, y);
-				fluidStacks.set(getFluidIndex(indexes), fluid);
-				increaseFluidIndex(indexes);
-			} else if (!item.isEmpty()) {
-				stacks.init(getItemIndex(indexes), output, x, y);
-				stacks.set(getItemIndex(indexes), item);
-				increaseItemIndex(indexes);
-			}
+	
+	int setMultiblock(int index, IGuiItemStackGroup stacks, List<ItemStack> center, List<ItemStack> edges, List<ItemStack> corners, int posX, int posY, boolean centerOutput, boolean edgeOutput, boolean cornerOutput) {
+		stacks.init(index, false, posX - ITEM_WIDTH / 2, posY - MathHelper.floor(ITEM_HEIGHT * 2.5));
+		stacks.set(index, ModCompatUtil.getStackFor(new ResourceLocation("botania", "terraplate")));
+		index++;
+		
+		if(!empty(center)) {
+			//the middle
+			stacks.init(index, centerOutput, posX - ITEM_WIDTH / 2, posY - ITEM_HEIGHT / 2);
+			stacks.set(index, center);
+			index++;
 		}
+		
+		if(!empty(edges)) {
+			//the edges
+			stacks.init(index, edgeOutput, posX - MathHelper.floor(ITEM_WIDTH * 1.5), posY - ITEM_HEIGHT);
+			stacks.set(index, edges);
+			index++;
+			
+			stacks.init(index, edgeOutput, posX + ITEM_WIDTH / 2, posY - ITEM_HEIGHT);
+			stacks.set(index, edges);
+			index++;
+			
+			stacks.init(index, edgeOutput, posX - MathHelper.floor(ITEM_WIDTH * 1.5), posY);
+			stacks.set(index, edges);
+			index++;
+			
+			stacks.init(index, edgeOutput, posX + ITEM_WIDTH / 2, posY);
+			stacks.set(index, edges);
+			index++;
+		}
+		
+		if(!empty(corners)) {
+			//the corners
+			stacks.init(index, cornerOutput, posX - MathHelper.floor(ITEM_WIDTH * 2.5), posY - ITEM_HEIGHT / 2);
+			stacks.set(index, corners);
+			index++;
+			
+			stacks.init(index, cornerOutput, posX + MathHelper.floor(ITEM_WIDTH * 1.5), posY - ITEM_HEIGHT / 2);
+			stacks.set(index, corners);
+			index++;
+			
+			stacks.init(index, cornerOutput, posX - ITEM_WIDTH / 2, posY - MathHelper.floor(ITEM_HEIGHT * 1.5));
+			stacks.set(index, corners);
+			index++;
+			
+			stacks.init(index, cornerOutput, posX - ITEM_WIDTH / 2, posY + ITEM_HEIGHT / 2);
+			stacks.set(index, corners);
+			index++;
+		}
+		
+		return index;
 	}
 }
